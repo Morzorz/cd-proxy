@@ -114,27 +114,44 @@ func validateConfig(cfg *Config) error {
 	return nil
 }
 
-func buildState(cfg *Config) *ProxyState {
+func buildState(cfg *Config, reuseTransport *http.Transport) *ProxyState {
 	m := make(map[string]ModelConfig, len(cfg.Models))
 	for _, mc := range cfg.Models {
 		m[mc.Name] = mc
 	}
+
+	transport := reuseTransport
+	if transport == nil {
+		transport = newTransport(cfg.UpstreamConnectTimeout)
+	} else {
+		// Update timeouts to match current config.
+		transport.TLSHandshakeTimeout = cfg.UpstreamConnectTimeout
+		transport.DialContext = (&net.Dialer{
+			Timeout:   cfg.UpstreamConnectTimeout,
+			KeepAlive: 30 * time.Second,
+		}).DialContext
+	}
+
 	return &ProxyState{
-		Config:         *cfg,
-		ModelMap:       m,
+		Config:          *cfg,
+		ModelMap:        m,
 		DefaultUpstream: cfg.Default,
 		HTTPClient: &http.Client{
-			Timeout: cfg.UpstreamTimeout,
-			Transport: &http.Transport{
-				DialContext: (&net.Dialer{
-					Timeout:   cfg.UpstreamConnectTimeout,
-					KeepAlive: 30 * time.Second,
-				}).DialContext,
-				TLSHandshakeTimeout: cfg.UpstreamConnectTimeout,
-				MaxIdleConns:        100,
-				IdleConnTimeout:     90 * time.Second,
-			},
+			Timeout:   cfg.UpstreamTimeout,
+			Transport: transport,
 		},
+	}
+}
+
+func newTransport(connectTimeout time.Duration) *http.Transport {
+	return &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   connectTimeout,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout: connectTimeout,
+		MaxIdleConns:        100,
+		IdleConnTimeout:     90 * time.Second,
 	}
 }
 

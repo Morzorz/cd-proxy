@@ -24,6 +24,7 @@ type App struct {
 	adminAddr    string
 	startTime    time.Time
 	requestCount atomic.Int64
+	transport    *http.Transport // reused across config reloads
 
 	mu sync.Mutex // serializes start/stop
 }
@@ -45,7 +46,7 @@ func NewApp(cfg *Config, configPath, proxyAddr, adminAddr string) (*App, error) 
 		return nil, fmt.Errorf("validate config: %w", err)
 	}
 
-	state := buildState(cfg)
+	state := buildState(cfg, nil)
 
 	app := &App{
 		logRing:    NewLogRing(2000),
@@ -53,6 +54,7 @@ func NewApp(cfg *Config, configPath, proxyAddr, adminAddr string) (*App, error) 
 		proxyAddr:  proxyAddr,
 		adminAddr:  adminAddr,
 		startTime:  time.Now(),
+		transport:  state.HTTPClient.Transport.(*http.Transport),
 	}
 	app.state.Store(state)
 	return app, nil
@@ -95,7 +97,7 @@ func (a *App) ReloadConfig() error {
 		return err
 	}
 
-	state := buildState(cfg)
+	state := buildState(cfg, a.transport)
 	a.state.Store(state)
 	slog.Info("config reloaded")
 	return nil
@@ -119,7 +121,7 @@ func (a *App) UpdateConfig(cfg *Config) error {
 		return fmt.Errorf("rename config: %w", err)
 	}
 
-	state := buildState(cfg)
+	state := buildState(cfg, a.transport)
 	a.state.Store(state)
 	slog.Info("config updated and reloaded")
 	return nil
@@ -133,6 +135,11 @@ func (a *App) StartProxy() error {
 		return fmt.Errorf("proxy already running")
 	}
 
+	ln, err := net.Listen("tcp", a.proxyAddr)
+	if err != nil {
+		return fmt.Errorf("proxy listen %s: %w", a.proxyAddr, err)
+	}
+
 	state := a.CurrentState()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/messages", a.handleMessages)
@@ -143,7 +150,6 @@ func (a *App) StartProxy() error {
 	handler = corsMiddleware(state.Config.CORS, handler)
 
 	a.proxySrv = &http.Server{
-		Addr:    a.proxyAddr,
 		Handler: handler,
 		BaseContext: func(l net.Listener) context.Context {
 			return context.Background()
@@ -155,7 +161,7 @@ func (a *App) StartProxy() error {
 
 	go func() {
 		slog.Info("proxy started", "addr", a.proxyAddr)
-		if err := a.proxySrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := a.proxySrv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			slog.Error("proxy error", "error", err)
 		}
 	}()
@@ -184,8 +190,12 @@ func (a *App) StartAdmin() error {
 		return fmt.Errorf("admin already running")
 	}
 
+	ln, err := net.Listen("tcp", a.adminAddr)
+	if err != nil {
+		return fmt.Errorf("admin listen %s: %w", a.adminAddr, err)
+	}
+
 	a.adminSrv = &http.Server{
-		Addr:    a.adminAddr,
 		Handler: newAdminMux(a),
 		BaseContext: func(l net.Listener) context.Context {
 			return context.Background()
@@ -197,7 +207,7 @@ func (a *App) StartAdmin() error {
 
 	go func() {
 		slog.Info("admin started", "addr", a.adminAddr)
-		if err := a.adminSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := a.adminSrv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			slog.Error("admin error", "error", err)
 		}
 	}()

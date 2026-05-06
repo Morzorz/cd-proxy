@@ -12,10 +12,21 @@ import (
 func (s *ProxyState) HandleMessages(w http.ResponseWriter, r *http.Request) {
 	const maxBodySize = 32 * 1024 * 1024 // 32MB
 
-	bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, maxBodySize))
-	if err != nil {
-		writeProxyError(w, http.StatusBadRequest, "invalid_request_error", "failed to read request body")
-		return
+	var bodyBytes []byte
+	var err error
+
+	if cached, ok := cachedBody(r); ok {
+		if len(cached) > maxBodySize {
+			writeProxyError(w, http.StatusBadRequest, "invalid_request_error", "request body too large")
+			return
+		}
+		bodyBytes = cached
+	} else {
+		bodyBytes, err = io.ReadAll(io.LimitReader(r.Body, maxBodySize))
+		if err != nil {
+			writeProxyError(w, http.StatusBadRequest, "invalid_request_error", "failed to read request body")
+			return
+		}
 	}
 
 	var bodyMap map[string]any

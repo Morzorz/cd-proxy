@@ -3,12 +3,22 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net"
 	"net/http"
 	"time"
 )
+
+type ctxKey int
+
+const ctxKeyBody ctxKey = iota
+
+func cachedBody(r *http.Request) ([]byte, bool) {
+	b, ok := r.Context().Value(ctxKeyBody).([]byte)
+	return b, ok
+}
 
 type statusRecorder struct {
 	http.ResponseWriter
@@ -38,8 +48,12 @@ func requestLogMiddleware(logRing *LogRing, next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: 200}
 
-		// Extract model name for POST /v1/messages
-		model := extractModel(r)
+		// Read body once, cache in context so downstream handler can reuse it.
+		model, bodyBytes := extractModel(r)
+		if bodyBytes != nil {
+			r = r.WithContext(context.WithValue(r.Context(), ctxKeyBody, bodyBytes))
+			r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		}
 
 		next.ServeHTTP(rec, r)
 
@@ -56,22 +70,22 @@ func requestLogMiddleware(logRing *LogRing, next http.Handler) http.Handler {
 	})
 }
 
-func extractModel(r *http.Request) string {
+func extractModel(r *http.Request) (model string, bodyBytes []byte) {
 	if r.Method != "POST" || r.URL.Path != "/v1/messages" {
-		return ""
+		return "", nil
 	}
-	bodyBytes, err := io.ReadAll(r.Body)
+	var err error
+	bodyBytes, err = io.ReadAll(r.Body)
 	if err != nil {
-		return ""
+		return "", nil
 	}
-	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	var body map[string]any
 	if json.Unmarshal(bodyBytes, &body) != nil {
-		return ""
+		return "", bodyBytes
 	}
-	model, _ := body["model"].(string)
-	return model
+	model, _ = body["model"].(string)
+	return model, bodyBytes
 }
 
 func levelForStatus(status int) string {

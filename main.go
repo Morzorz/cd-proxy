@@ -47,16 +47,22 @@ func main() {
 		return
 	}
 
+	proxyOK := true
+	adminOK := true
 	if err := app.StartProxy(); err != nil {
 		slog.Error("proxy start failed", "error", err)
+		proxyOK = false
 	}
 	if err := app.StartAdmin(); err != nil {
 		slog.Error("admin start failed", "error", err)
+		adminOK = false
 	}
 
-	slog.Info("cd-proxy started",
+	slog.Info("cd-proxy startup complete",
 		"proxy", *proxyAddr,
+		"proxy_ok", proxyOK,
 		"admin", "http://"+*adminAddr,
+		"admin_ok", adminOK,
 		"config", configFile,
 	)
 
