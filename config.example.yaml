@@ -1,0 +1,49 @@
+# cd-proxy — Anthropic API proxy configuration
+# Copy to config.yaml and edit.
+#
+# listen:       proxy API listen address  (default :48271)
+# admin_listen: admin web UI listen address (default :59183)
+
+listen: ":48271"
+admin_listen: ":59183"
+upstream_timeout: 120s
+upstream_connect_timeout: 10s
+
+# -------------------------------------------------------------------
+# Default upstream: catch-all for any model not listed in [models].
+# model_name rewrites the client's Anthropic model name to the upstream model.
+# -------------------------------------------------------------------
+default:
+  url: "https://api.deepseek.com/anthropic/v1/messages"
+  api_key: "sk-your-deepseek-api-key"
+  model_name: "deepseek-v4-pro"
+
+# -------------------------------------------------------------------
+# Per-model routing (optional): explicit model → specific upstream.
+# Takes precedence over [default]. Support any Anthropic-protocol API.
+# -------------------------------------------------------------------
+models:
+  # --- DeepSeek ---
+  - name: "claude-sonnet-4-20250514"
+    upstream:
+      url: "https://api.deepseek.com/anthropic/v1/messages"
+      api_key: "sk-your-deepseek-api-key"
+      model_name: "deepseek-v4-pro"
+
+  # --- Other Anthropic-compatible providers (examples) ---
+  # - name: "claude-opus-4-20250514"
+  #   upstream:
+  #     url: "https://your-provider.example.com/v1/messages"
+  #     api_key: "sk-your-provider-key"
+  #     model_name: "provider-model-name"
+
+  # --- Real Anthropic API ---
+  # - name: "claude-haiku-4-20250514"
+  #   upstream:
+  #     url: "https://api.anthropic.com/v1/messages"
+  #     api_key: "sk-ant-api03-your-key"
+  #     # no model_name → passes through client's model name as-is
+
+cors:
+  enabled: true
+  allowed_origins: ["*"]

@@ -1,0 +1,9 @@
+# Sensitive configuration
+config.yaml
+config.yaml.bak
+
+# Binary
+cd-proxy
+
+# Build artifacts
+build/
