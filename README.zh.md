@@ -40,6 +40,7 @@ cd-proxy 通过本地代理解决这个问题——Claude Desktop 以官方模�
 
 ```yaml
 listen: ":48271"
+admin_listen: ":59183"
 upstream_timeout: 120s
 upstream_connect_timeout: 10s
 
@@ -160,7 +161,7 @@ cd-proxy.exe --headless
 | `GET` | `/api/config/export` | 下载当前配置 YAML |
 | `/` | — | 内嵌 Web 管理面板 |
 
-### 代理 API（端口 8080）
+### 代理 API（端口 48271）
 
 | 方法 | 路径 | 说明 |
 |--------|------|------|

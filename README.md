@@ -40,6 +40,7 @@ The proxy listens on `:48271` by default. Point your agent's base URL at `http:/
 
 ```yaml
 listen: ":48271"
+admin_listen: ":59183"
 upstream_timeout: 120s
 upstream_connect_timeout: 10s
 
@@ -160,7 +161,7 @@ The web dashboard is served on the admin port (`:59183` by default, open `http:/
 | `GET` | `/api/config/export` | Download current config as YAML |
 | `/` | — | Embedded web dashboard |
 
-### Proxy API (port 8080)
+### Proxy API (port 48271)
 
 | Method | Path | Description |
 |--------|------|-------------|
