@@ -16,7 +16,7 @@ cd-proxy 通过本地代理解决这个问题——Claude Desktop 以官方模�
 
 <img src="./images/企业微信截图_6db3e3c6-e2be-4b0d-99de-3ca6e67bb2e1.png" width="700">
 
-<img src="./images/企业微信截图_a64a2b52-9dd0-404d-90a5-7825ecda9674.png" width="700">
+<img src="./images/企业微信截图_02da6e4e-fc60-446d-b94b-582eb0b2128a.png" width="700">
 
 ## 功能特性
 
