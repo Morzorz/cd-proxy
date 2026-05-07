@@ -14,6 +14,10 @@ cd-proxy 通过本地代理解决这个问题——Claude Desktop 以官方模�
 
 **使用场景**：在 Claude Desktop 中配置 Anthropic 官方模型名称，将 Base URL 指向 cd-proxy，代理会自动转发到 DeepSeek 或其他支持 Anthropic Messages API 的供应商——agent 无需任何代码改动。
 
+<img src="./images/企业微信截图_6db3e3c6-e2be-4b0d-99de-3ca6e67bb2e1.png" width="400">
+
+<img src="./images/企业微信截图_a64a2b52-9dd0-404d-90a5-7825ecda9674.png" width="400">
+
 ## 功能特性
 
 - **协议透传** — 不做协议转换，纯转发。兼容任何支持 [Anthropic Messages API](https://docs.anthropic.com/en/api/messages) 的上游
