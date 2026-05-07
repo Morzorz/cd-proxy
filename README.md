@@ -14,6 +14,10 @@ cd-proxy solves this by acting as a local proxy — Claude Desktop sends request
 
 **Use case**: configure official Anthropic model names in Claude Desktop, point the base URL at cd-proxy, and it forwards to DeepSeek, or any other provider that speaks the Anthropic Messages API — no code changes needed in Claude Desktop.
 
+<img src="./images/企业微信截图_6db3e3c6-e2be-4b0d-99de-3ca6e67bb2e1.png" width="700">
+
+<img src="./images/企业微信截图_02da6e4e-fc60-446d-b94b-582eb0b2128a.png" width="700">
+
 ## Features
 
 - **Protocol-preserving** — no translation, just routing. Works with any upstream that supports the [Anthropic Messages API](https://docs.anthropic.com/en/api/messages)
