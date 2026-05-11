@@ -10,6 +10,11 @@ func (a *App) handleMessages(w http.ResponseWriter, r *http.Request) {
 	state.HandleMessages(w, r)
 }
 
+func (a *App) handleModels(w http.ResponseWriter, r *http.Request) {
+	state := a.CurrentState()
+	state.HandleModels(w, r)
+}
+
 func (a *App) handleHealth(w http.ResponseWriter, r *http.Request) {
 	state := a.CurrentState()
 	state.HandleHealth(w, r)

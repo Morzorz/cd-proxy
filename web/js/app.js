@@ -291,6 +291,7 @@ let logEntryCount = 0;
 register('logs', () => {
   $content.innerHTML = `<h2>Logs</h2>
     <div class="filter-bar">
+      <select id="logSource"><option value="">All sources</option><option value="proxy">Agent</option><option value="admin">Admin</option></select>
       <select id="logLevel"><option value="">All levels</option><option>info</option><option>warn</option><option>error</option></select>
       <select id="logMethod"><option value="">All methods</option><option>POST</option><option>GET</option></select>
       <input id="logModel" placeholder="Filter model...">
@@ -334,9 +335,11 @@ function startLogStream() {
 }
 
 function appendLogEntry(entry) {
+  const source = document.getElementById('logSource')?.value || '';
   const level = document.getElementById('logLevel')?.value || '';
   const method = document.getElementById('logMethod')?.value || '';
   const model = document.getElementById('logModel')?.value || '';
+  if (source && entry.source !== source) return;
   if (level && entry.level !== level) return;
   if (method && entry.method !== method) return;
   if (model && !(entry.model||'').includes(model)) return;
@@ -354,6 +357,7 @@ function appendLogEntry(entry) {
   $div.className = 'log-entry';
   $div.innerHTML = `
     <span class="time">${new Date(entry.timestamp).toLocaleTimeString()}</span>
+    <span class="source-badge ${entry.source || ''}">${entry.source === 'proxy' ? 'Agent' : entry.source === 'admin' ? 'Admin' : (entry.source || '')}</span>
     <span class="level ${entry.level}">${entry.level.toUpperCase()}</span>
     <span class="method-badge">${entry.method}</span>
     <span class="path">${escapeHtml(entry.path)}</span>
@@ -364,8 +368,15 @@ function appendLogEntry(entry) {
     const detail = $div.querySelector('.log-detail');
     if (detail) { detail.remove(); return; }
     const d = document.createElement('div'); d.className = 'log-detail';
-    d.style.cssText = 'font-size:11px;color:var(--text2);margin-top:4px';
-    d.textContent = `Remote: ${entry.remote}`;
+    let html = `<div class="log-detail-row"><strong>Source:</strong> ${entry.source === 'proxy' ? 'Agent' : entry.source === 'admin' ? 'Admin' : (entry.source || '-')}</div>`;
+    html += `<div class="log-detail-row"><strong>Remote:</strong> ${escapeHtml(entry.remote)}</div>`;
+    if (entry.request_body) {
+      html += `<div class="log-detail-row"><strong>Request Body:</strong><pre class="log-body-pre">${escapeHtml(tryFormatJSON(entry.request_body))}</pre></div>`;
+    }
+    if (entry.response_body) {
+      html += `<div class="log-detail-row"><strong>Response Body:</strong><pre class="log-body-pre">${escapeHtml(tryFormatJSON(entry.response_body))}</pre></div>`;
+    }
+    d.innerHTML = html;
     $div.appendChild(d);
   });
   $list.appendChild($div);
@@ -431,4 +442,11 @@ function escapeHtml(s) {
 function escapeAttr(s) {
   if (!s) return '';
   return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function tryFormatJSON(s) {
+  try {
+    return JSON.stringify(JSON.parse(s), null, 2);
+  } catch(e) {
+    return s;
+  }
 }

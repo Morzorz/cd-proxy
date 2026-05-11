@@ -143,6 +143,7 @@ func (a *App) StartProxy() error {
 	state := a.CurrentState()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/messages", a.handleMessages)
+	mux.HandleFunc("GET /v1/models", a.handleModels)
 	mux.HandleFunc("GET /health", a.handleHealth)
 
 	var handler http.Handler = mux

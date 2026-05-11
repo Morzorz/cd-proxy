@@ -43,12 +43,49 @@ func (r *statusRecorder) Flush() {
 	}
 }
 
+type bodyRecorder struct {
+	http.ResponseWriter
+	status  int
+	body    bytes.Buffer
+	maxBody int
+}
+
+func (r *bodyRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *bodyRecorder) Write(b []byte) (int, error) {
+	n, err := r.ResponseWriter.Write(b)
+	if r.body.Len() < r.maxBody {
+		remaining := r.maxBody - r.body.Len()
+		if n > remaining {
+			r.body.Write(b[:remaining])
+		} else {
+			r.body.Write(b[:n])
+		}
+	}
+	return n, err
+}
+
+func (r *bodyRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := r.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, http.ErrNotSupported
+}
+
+func (r *bodyRecorder) Flush() {
+	if f, ok := r.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 func requestLogMiddleware(logRing *LogRing, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		rec := &statusRecorder{ResponseWriter: w, status: 200}
+		rec := &bodyRecorder{ResponseWriter: w, status: 200, maxBody: 8 * 1024}
 
-		// Read body once, cache in context so downstream handler can reuse it.
 		model, bodyBytes := extractModel(r)
 		if bodyBytes != nil {
 			r = r.WithContext(context.WithValue(r.Context(), ctxKeyBody, bodyBytes))
@@ -58,14 +95,17 @@ func requestLogMiddleware(logRing *LogRing, next http.Handler) http.Handler {
 		next.ServeHTTP(rec, r)
 
 		logRing.Add(LogEntry{
-			Timestamp: start,
-			Level:     levelForStatus(rec.status),
-			Method:    r.Method,
-			Path:      r.URL.Path,
-			Status:    rec.status,
-			Duration:  time.Since(start).String(),
-			Remote:    r.RemoteAddr,
-			Model:     model,
+			Timestamp:    start,
+			Level:        levelForStatus(rec.status),
+			Source:       "proxy",
+			Method:       r.Method,
+			Path:         r.URL.Path,
+			Status:       rec.status,
+			Duration:     time.Since(start).String(),
+			Remote:       r.RemoteAddr,
+			Model:        model,
+			RequestBody:  truncateBytesToString(bodyBytes, 8*1024),
+			ResponseBody: truncateBytesToString(rec.body.Bytes(), 8*1024),
 		})
 	})
 }
@@ -98,6 +138,16 @@ func levelForStatus(status int) string {
 	return "info"
 }
 
+func truncateBytesToString(b []byte, maxSize int) string {
+	if len(b) == 0 {
+		return ""
+	}
+	if len(b) > maxSize {
+		return string(b[:maxSize]) + "...[truncated]"
+	}
+	return string(b)
+}
+
 // logMiddleware is a simpler version used in the admin server
 func simpleLogMiddleware(logRing *LogRing, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +158,7 @@ func simpleLogMiddleware(logRing *LogRing, next http.Handler) http.Handler {
 		logRing.Add(LogEntry{
 			Timestamp: start,
 			Level:     levelForStatus(rec.status),
+			Source:    "admin",
 			Method:    r.Method,
 			Path:      r.URL.Path,
 			Status:    rec.status,

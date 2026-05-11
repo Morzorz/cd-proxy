@@ -6,14 +6,17 @@ import (
 )
 
 type LogEntry struct {
-	Timestamp time.Time `json:"timestamp"`
-	Level     string    `json:"level"`
-	Method    string    `json:"method"`
-	Path      string    `json:"path"`
-	Status    int       `json:"status"`
-	Duration  string    `json:"duration"`
-	Remote    string    `json:"remote"`
-	Model     string    `json:"model,omitempty"`
+	Timestamp    time.Time `json:"timestamp"`
+	Level        string    `json:"level"`
+	Source       string    `json:"source"`
+	Method       string    `json:"method"`
+	Path         string    `json:"path"`
+	Status       int       `json:"status"`
+	Duration     string    `json:"duration"`
+	Remote       string    `json:"remote"`
+	Model        string    `json:"model,omitempty"`
+	RequestBody  string    `json:"request_body,omitempty"`
+	ResponseBody string    `json:"response_body,omitempty"`
 }
 
 type LogRing struct {

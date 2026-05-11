@@ -117,6 +117,40 @@ func (s *ProxyState) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
+func (s *ProxyState) HandleModels(w http.ResponseWriter, r *http.Request) {
+	type modelEntry struct {
+		ID          string `json:"id"`
+		Type        string `json:"type"`
+		DisplayName string `json:"display_name"`
+		CreatedAt   string `json:"created_at"`
+	}
+
+	names := s.modelNames()
+	data := make([]modelEntry, 0, len(names))
+	for _, name := range names {
+		data = append(data, modelEntry{
+			ID:          name,
+			Type:        "model",
+			DisplayName: name,
+			CreatedAt:   "1970-01-01T00:00:00Z",
+		})
+	}
+
+	var firstID, lastID string
+	if len(data) > 0 {
+		firstID = data[0].ID
+		lastID = data[len(data)-1].ID
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"data":     data,
+		"first_id": firstID,
+		"has_more": false,
+		"last_id":  lastID,
+	})
+}
+
 func writeProxyError(w http.ResponseWriter, statusCode int, errType, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
